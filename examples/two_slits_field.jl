@@ -1,10 +1,10 @@
 import Pkg
-Pkg.activate(joinpath(@__DIR__, "../src/Waveq"))
+Pkg.activate(joinpath(@__DIR__, ".."))
 ENV["GKSwstype"] = "100"
 
 using Plots
 using LinearAlgebra
-include("../src/Waveq/src/Waveq.jl")
+include("../src/Waveq.jl")
 using .Waveq
 using .Waveq: Plane, Wavefront, FromIntensity, nyquist_wavenum_res, propagate_parallel
 

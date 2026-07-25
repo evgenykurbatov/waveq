@@ -1,11 +1,11 @@
 import Pkg
-Pkg.activate(joinpath(@__DIR__, "../src/Waveq"))
+Pkg.activate(joinpath(@__DIR__, ".."))
 
 # Prevent window
 ENV["GKSwstype"] = "100"
 
 using Plots
-include("../src/Waveq/src/Waveq.jl")
+include("../src/Waveq.jl")
 using .Waveq: SF5, F2, N_BK7, wv_ref_d, refractive_index
 
 wv = range(0.365, 2.5, length=100) # um

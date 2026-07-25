@@ -9,71 +9,75 @@ using LinearAlgebra
 using SpecialFunctions
 include("../src/Waveq.jl")
 using .Waveq
-using .Waveq: Plane, Wavefront, FromField, nyquist_wavenum_res, propagate_parallel
+using .Waveq: Plane, Wavefront, FromField, nyquist_wavenum_res, propagate_parallel, propagate
 
 wv = 0.650 # 650 nm in um
-#L = 4096 * wv
-L = 256 * wv
-#L = 1024 * wv
-dx_ = 1.0 * wv
+L = 2048 * wv
+dx_ = 2.0 * wv
 nx = round(Int, L / dx_)
 nx = iseven(nx) ? nx + 1 : nx
 
 pl1 = Plane([0.0, 0.0, 0.0]; span=(L, 1.0), num_nodes=(nx, 1))
 
-x_ = range(-L/2, L/2, length=nx)
+x_ = collect(range(-L/2, L/2, length=nx))
 u0 = zeros(ComplexF64, 1, nx)
 
-idx1 = argmin(abs.(x_ .- (-2*wv)))
-idx2 = argmin(abs.(x_ .- (2*wv)))
-u0[1, idx1] = 1.0 / dx_
-u0[1, idx2] = 1.0 / dx_
+delta_x = L / 8
+sigma = L / 16
+u0[1, :] .= @. exp(-0.5*(x_ - delta_x/2)^2 / sigma^2) +
+    exp(-0.5*(x_ + delta_x/2)^2 / sigma^2)
 
 # Nyquist resolutions
-#z_dist = 1e5 * wv
-z_dist = 100 * wv
-dxi, deta = nyquist_wavenum_res(wv, [x_[1], x_[end]], [0.0], [z_dist], dx_, Inf)
-#dxi *= 0.25
-#dxi *= 6.75
+z_dist = 50 * L
+dxi, deta = nyquist_wavenum_res(wv, [x_[1], x_[end]], [0.0], [z_dist], dx_, 1.0)
+dxi *= 20
+
 # we use 1D, so deta is not strictly constrained, we can just use 1.0 for it.
 wf = Wavefront(FromField(), pl1, u0, dxi, 1.0)
 println("nxi: ", length(wf.xi), ", neta: ", length(wf.eta))
 
 pl2 = Plane([0.0, 0.0, z_dist]; span=(L, 1.0), num_nodes=(nx, 1))
 
+# Exact direct sum (convolution)
 u_exact = zeros(ComplexF64, nx)
 k = 2π / wv
 for i in 1:nx
-    x = x_[i]
-
-    R1 = sqrt((x - x_[idx1])^2 + z_dist^2)
-    # 2D Rayleigh-Sommerfeld kernel (line source)
-    u1 = (im * k * z_dist / (2 * R1)) * hankelh1(1, k * R1)
-
-    R2 = sqrt((x - x_[idx2])^2 + z_dist^2)
-    u2 = (im * k * z_dist / (2 * R2)) * hankelh1(1, k * R2)
-
-    u_exact[i] = u1 + u2
+    for j in 1:nx
+        if abs(u0[1, j]) > 0
+            dx_val = x_[i] - x_[j]
+            R = sqrt(dx_val^2 + z_dist^2)
+            kernel = (im * k * z_dist / (2 * R)) * hankelh1(1, k * R)
+            u_exact[i] += u0[1, j] * kernel * dx_
+        end
+    end
 end
 
-u_num_filtered = propagate_parallel(wf, wv, pl2; band_limited=true)
+#u_num_filtered = propagate_parallel(wf, wv, pl2; band_limited=true)
+u_num_filtered = propagate(wf, wv, pl2; band_limited=true)
 u_num_unfiltered = propagate_parallel(wf, wv, pl2; band_limited=false)
 
-I_exact = abs2.(u_exact)
-I_filtered = abs2.(vec(u_num_filtered))
-I_unfiltered = abs2.(vec(u_num_unfiltered))
+I_1 = abs2.(vec(u0))
+I_2 = abs2.(vec(u_num_filtered))
+I_2_aliasing = abs2.(vec(u_num_unfiltered))
+I_2_exact = abs2.(u_exact)
 
-println("Max Intensity (Exact): ", maximum(I_exact))
-println("Max diff (Filtered vs Exact): ", maximum(abs.(I_exact .- I_filtered)))
-println("Max diff (Unfiltered vs Exact): ", maximum(abs.(I_exact .- I_unfiltered)))
+energy_source = sum(I_1) * dx_
+energy_exact = sum(I_2_exact) * dx_
+energy_unfiltered = sum(I_2_aliasing) * dx_
+energy_filtered = sum(I_2) * dx_
+
+println("Energy source:      ", energy_source)
+println("Energy exact:       ", energy_exact)
+println("Energy unfiltered:  ", energy_unfiltered)
+println("Energy filtered:    ", energy_filtered)
 
 # Subplot 1: Source plane (Intensity)
-p1 = plot(x_, I_exact, label="Exact (2D)", c=:gray, alpha=0.75, lw=3, title="Target plane")
-#plot!(p1, x_, I_unfiltered, label="Unfiltered", c=:cyan, alpha=0.75, ls=:dot, lw=2)
-plot!(p1, x_, I_filtered, label="Filtered", c=:red, alpha=0.75, ls=:dash, lw=2)
+p1 = plot(x_, I_1, label="Slit", c=:gray, alpha=0.75, ls=:dot, lw=2, title="Source plane / Target plane")
+plot!(p1, x_, I_2_exact, label="Direct sum", c=:gray, alpha=0.75, lw=3)
+plot!(p1, x_, I_2_aliasing, label="Unfiltered", c=:cyan, alpha=0.75, ls=:dot, lw=2)
+plot!(p1, x_, I_2, label="Filtered", c=:red, alpha=0.75, ls=:dash, lw=2)
 xlabel!(p1, "x [um]")
 ylabel!(p1, "Intensity")
-xlims!(-128*wv, 128*wv)
 
 # Calculate spectra for plotting
 nxi = length(wf.xi)
@@ -114,7 +118,7 @@ U2_filtered .*= cis.(K .* z_dist)
 
 # Subplot 2: Power spectrum
 # using line plots instead of scatter for smaller PDF size
-p2 = plot(wf.xi, abs.(vec(wf.U)), c=:gray, alpha=0.5, lw=2, label="Initial", title="Power spectrum")
+p2 = plot(wf.xi, abs.(vec(wf.U)), c=:gray, alpha=0.5, lw=2, label="Slit", title="Power spectrum")
 plot!(p2, wf.xi, abs.(vec(U2_unfiltered)), c=:cyan, alpha=0.5, lw=2, label="Unfiltered")
 plot!(p2, wf.xi, abs.(vec(U2_filtered)), c=:red, alpha=0.5, lw=2, label="Filtered")
 xlabel!(p2, "ξ [um⁻¹]")
@@ -131,4 +135,4 @@ xlabel!(p3, "ξ [um⁻¹]")
 
 fig = plot(p1, p2, p3, layout=(1, 3), size=(1200, 400), margin=5Plots.mm)
 
-savefig(fig, joinpath(@__DIR__, "point_sources.pdf"))
+savefig(fig, joinpath(@__DIR__, "slit_gaussian.pdf"))

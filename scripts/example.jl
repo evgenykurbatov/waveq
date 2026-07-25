@@ -2,10 +2,10 @@
 
 # Example: Using Waveq directly from Julia with multithreading
 #
-# Run with: julia --project=src/Waveq --threads=auto scripts/example.jl
+# Run with: julia --project=.. --threads=auto scripts/example.jl
 
 using Pkg
-Pkg.activate(joinpath(@__DIR__, "..", "src", "Waveq"))
+Pkg.activate(joinpath(@__DIR__, ".."))
 Pkg.instantiate()
 
 using Waveq

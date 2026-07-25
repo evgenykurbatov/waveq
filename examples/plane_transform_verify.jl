@@ -1,11 +1,11 @@
 import Pkg
-Pkg.activate(joinpath(@__DIR__, "../src/Waveq"))
+Pkg.activate(joinpath(@__DIR__, ".."))
 
 ENV["GKSwstype"] = "100"
 
 using Plots
 using LinearAlgebra
-include("../src/Waveq/src/Waveq.jl")
+include("../src/Waveq.jl")
 using .Waveq: Plane, to_plane, from_plane
 
 pl1 = Plane([0.0, 0.0, 0.0]; span=(2.0, 1.5), num_nodes=(4, 3), orientation=(0.0, 0.0))

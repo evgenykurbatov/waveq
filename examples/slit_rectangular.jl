@@ -1,5 +1,5 @@
 import Pkg
-Pkg.activate(joinpath(@__DIR__, "../src/Waveq"))
+Pkg.activate(joinpath(@__DIR__, ".."))
 
 # Prevent a window from flickering open during script execution
 ENV["GKSwstype"] = "100"
@@ -7,7 +7,7 @@ ENV["GKSwstype"] = "100"
 using Plots
 using LinearAlgebra
 using SpecialFunctions
-include("../src/Waveq/src/Waveq.jl")
+include("../src/Waveq.jl")
 using .Waveq
 using .Waveq: Plane, Wavefront, FromField, nyquist_wavenum_res, propagate_parallel, propagate
 
@@ -57,16 +57,26 @@ end
 u_num_filtered = propagate(wf, wv, pl2; band_limited=true)
 u_num_unfiltered = propagate_parallel(wf, wv, pl2; band_limited=false)
 
-im1 = abs2.(vec(u0))
-im2 = abs2.(vec(u_num_filtered))
-im2_aliasing = abs2.(vec(u_num_unfiltered))
-im2_exact = abs2.(u_exact)
+I_1 = abs2.(vec(u0))
+I_2 = abs2.(vec(u_num_filtered))
+I_2_aliasing = abs2.(vec(u_num_unfiltered))
+I_2_exact = abs2.(u_exact)
+
+energy_source = sum(I_1) * dx_
+energy_exact = sum(I_2_exact) * dx_
+energy_unfiltered = sum(I_2_aliasing) * dx_
+energy_filtered = sum(I_2) * dx_
+
+println("Energy source:      ", energy_source)
+println("Energy exact:       ", energy_exact)
+println("Energy unfiltered:  ", energy_unfiltered)
+println("Energy filtered:    ", energy_filtered)
 
 # Subplot 1: Source plane (Intensity)
-p1 = plot(x_, im1, label="Slit", c=:gray, alpha=0.75, ls=:dot, lw=2, title="Source plane / Target plane")
-plot!(p1, x_, im2_exact, label="Direct sum", c=:gray, alpha=0.75, lw=3)
-plot!(p1, x_, im2_aliasing, label="Unfiltered", c=:cyan, alpha=0.75, ls=:dot, lw=2)
-plot!(p1, x_, im2, label="Filtered", c=:red, alpha=0.75, ls=:dash, lw=2)
+p1 = plot(x_, I_1, label="Slit", c=:gray, alpha=0.75, ls=:dot, lw=2, title="Source plane / Target plane")
+plot!(p1, x_, I_2_exact, label="Direct sum", c=:gray, alpha=0.75, lw=3)
+plot!(p1, x_, I_2_aliasing, label="Unfiltered", c=:cyan, alpha=0.75, ls=:dot, lw=2)
+plot!(p1, x_, I_2, label="Filtered", c=:red, alpha=0.75, ls=:dash, lw=2)
 xlabel!(p1, "x [um]")
 ylabel!(p1, "Intensity")
 
@@ -126,4 +136,4 @@ xlabel!(p3, "ξ [um⁻¹]")
 
 fig = plot(p1, p2, p3, layout=(1, 3), size=(1200, 400), margin=5Plots.mm)
 
-savefig(fig, joinpath(@__DIR__, "slit.pdf"))
+savefig(fig, joinpath(@__DIR__, "slit_rectangular.pdf"))

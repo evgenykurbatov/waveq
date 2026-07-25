@@ -18,8 +18,8 @@ function nyquist_wavenum_res(wv::Real,
                          y::AbstractVector{<:Real},
                          z::AbstractVector{<:Real},
                          dx_::Real, dy_::Real)
-    xi_max  = 1.0 / dx_
-    eta_max = 1.0 / dy_
+    xi_max  = 0.5 / dx_
+    eta_max = 0.5 / dy_
 
     val = 1.0 / wv^2 - xi_max^2 - eta_max^2
     if val > 0

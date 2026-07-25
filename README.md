@@ -11,8 +11,13 @@ URL: https://github.com/evgenykurbatov/waveq
 ### 1. Install Julia dependencies
 
 ```bash
-pixi run julia --project=src/Waveq -e 'using Pkg; Pkg.instantiate()'
+pixi run julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
+
+### 2. Run examples
+
+```bash
+pixi run -e dev julia --project=. examples/A_3d.jl
 ```
 
 

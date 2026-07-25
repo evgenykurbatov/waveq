@@ -1,9 +1,9 @@
 import Pkg
-Pkg.activate(joinpath(@__DIR__, "../src/Waveq"))
+Pkg.activate(joinpath(@__DIR__, ".."))
 
 using BenchmarkTools
 using LinearAlgebra
-include("../src/Waveq/src/Waveq.jl")
+include("../src/Waveq.jl")
 using .Waveq
 using .Waveq: Plane, Wavefront, FromField, propagate, nyquist_wavenum_res
 

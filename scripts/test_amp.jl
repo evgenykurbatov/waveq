@@ -1,6 +1,6 @@
 using Plots
 using LinearAlgebra
-include("../src/Waveq/src/Waveq.jl")
+include("../src/Waveq.jl")
 using .Waveq
 using .Waveq: Plane, Wavefront, FromField, propagate_parallel
 
